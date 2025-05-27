@@ -45,29 +45,30 @@ learning_rate_fn = tf.keras.optimizers.schedules.PolynomialDecay(
 opts = tfa.optimizers.AdamW(learning_rate = 1e-4, weight_decay = learning_rate_fn)
 b_size = 8
 
-ct = datetime.now()
+ct = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
 model_type = "RAPUNet"
 
-progress_path = 'ProgressFull/' + dataset_type + '_progress_csv_' + model_type +  str(ct) + '.csv'
-progressfull_path = 'ProgressFull/' + dataset_type + '_progress_' + model_type +  str(ct) + '.txt'
+progress_path = 'D:/NCKH/RAPUNet/' + dataset_type + '_progress_csv_' + model_type +  str(ct) + '.csv'
+progressfull_path = 'D:/NCKH/RAPUNet/' + dataset_type + '_progress_' + model_type +  str(ct) + '.txt'
 
-model_path = 'ModelSave/' + dataset_type + '/' + model_type +  str(ct)
+model_path = 'ModelSave/' + dataset_type + '/RAPUNet2025-05-26_12-33-24'
 
 EPOCHS = 300
 min_loss_for_saving = 0.1
 
-model = RAPUNet.create_model(img_height=img_size, img_width=img_size, input_chanels=3, out_classes=1, starting_filters=filters)  
-model.compile(optimizer=opts, loss=dice_metric_loss) 
+model = RAPUNet.create_model(img_height=img_size, img_width=img_size, input_chanels=3, out_classes=1, starting_filters=filters)
+model.compile(optimizer=opts, loss=dice_metric_loss)
 
 #model.summary()
 #print(get_flops(model))
 
-data_path = "../data/Train_Clinic/" # Add the path to your data directory
-test_path = "../data/TestDataset/CVC-ClinicDB/" # Add the path to your data directory
+data_path = "D:/NCKH/RAPUNet/data/Train_Clinic/CVC-ColonDB/" # Add the path to your data directory
+test_path = "D:/NCKH/RAPUNet/data/TestDataset/CVC-ClinicDB/" # Add the path to your data directory
 X, Y = ImageLoader2D.load_data(img_size, img_size, -1, 'kvasir', data_path)
-
-# split train/valid/test as 0.8/0.1/0.1 
+print(X.shape)
+print(Y.shape)
+# split train/valid/test as 0.8/0.1/0.1
 #x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.1, shuffle= True, random_state = seed_value)
 #x_train, x_valid, y_train, y_valid = train_test_split(x_train, y_train, test_size=0.111, shuffle= True, random_state = seed_value)
 
@@ -109,51 +110,51 @@ def augment_images():
     
 
 
-for epoch in range(0, EPOCHS):
-    
-    print(f'Training, epoch {epoch}')
-    print('Learning Rate: ' + str(learning_rate))    
-        
-    image_augmented, mask_augmented = augment_images()
-    
-    csv_logger = CSVLogger(progress_path, append=True, separator=';')
-    
-    model.fit(x=image_augmented, y=mask_augmented, epochs=1, batch_size=b_size, validation_data=(x_valid, y_valid), verbose=1, callbacks=[csv_logger])
-    
-    prediction_valid = model.predict(x_valid, verbose=0)
-    loss_valid = dice_metric_loss(y_valid, prediction_valid)
-    loss_valid = loss_valid.numpy()
-    print("Loss Validation: " + str(loss_valid))
-        
-    prediction_test = model.predict(x_test, verbose=0)
-    loss_test = dice_metric_loss(y_test, prediction_test)
-    loss_test = loss_test.numpy()
-    print("Loss Test: " + str(loss_test))
-        
-    with open(progressfull_path, 'a') as f:
-        f.write('epoch: ' + str(epoch) + '\nval_loss: ' + str(loss_valid) + '\ntest_loss: ' + str(loss_test) + '\n\n\n')     
-    
-    
-    if min_loss_for_saving > loss_valid:
-        min_loss_for_saving = loss_valid
-        print("Saved model with val_loss: ", loss_valid)
-        model.save(model_path)
-        model.save("best_model.h5")  
-    
-    del image_augmented
-    del mask_augmented
-
-    gc.collect()
+# for epoch in range(0, EPOCHS):
+#
+#     print(f'Training, epoch {epoch}')
+#     print('Learning Rate: ' + str(learning_rate))
+#
+#     image_augmented, mask_augmented = augment_images()
+#
+#     csv_logger = CSVLogger(progress_path, append=True, separator=';')
+#
+#     model.fit(x=image_augmented, y=mask_augmented, epochs=1, batch_size=b_size, validation_data=(x_valid, y_valid), verbose=1, callbacks=[csv_logger])
+#
+#     prediction_valid = model.predict(x_valid, verbose=0)
+#     loss_valid = dice_metric_loss(y_valid, prediction_valid)
+#     loss_valid = loss_valid.numpy()
+#     print("Loss Validation: " + str(loss_valid))
+#
+#     prediction_test = model.predict(x_test, verbose=0)
+#     loss_test = dice_metric_loss(y_test, prediction_test)
+#     loss_test = loss_test.numpy()
+#     print("Loss Test: " + str(loss_test))
+#
+#     with open(progressfull_path, 'a') as f:
+#         f.write('epoch: ' + str(epoch) + '\nval_loss: ' + str(loss_valid) + '\ntest_loss: ' + str(loss_test) + '\n\n\n')
+#
+#
+#     if min_loss_for_saving > loss_valid:
+#         min_loss_for_saving = loss_valid
+#         print("Saved model with val_loss: ", loss_valid)
+#         model.save(model_path)
+#         model.save("best_model.h5")
+#
+#     del image_augmented
+#     del mask_augmented
+#
+#     gc.collect()
 
  
 print("Loading the model")
 
 model = tf.keras.models.load_model(model_path, custom_objects={'dice_metric_loss':dice_metric_loss}) 
 
-kpath = "../data/TestDataset/Kvasir/" # Add the path to your test data directory 
+kpath = "D:/NCKH/RAPUNet/data/TestDataset/Kvasir/" # Add the path to your test data directory
 x_kvasir, y_kvasir = ImageLoader2D.load_data(img_size, img_size, -1, 'kvasir', kpath)
 
-cnpath = "../data/TestDataset/CVC-ClinicDB/" # Add the path to your test data directory 
+cnpath = "D:/NCKH/RAPUNet/data/TestDataset/CVC-ClinicDB/" # Add the path to your test data directory
 x_clinic, y_clinic = ImageLoader2D.load_data(img_size, img_size, -1, 'kvasir', cnpath)
 
 
